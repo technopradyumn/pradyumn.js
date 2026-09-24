@@ -1,10 +1,10 @@
 {
   "name": "pradyumn",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Ultra-declarative, zero-boilerplate TypeScript UI creation library for React.",
   "license": "MIT",
   "type": "module",
-  "author": "pradyumn.js contributors",
+  "author": "technopradyumn <technopradyumn@gmail.com>",
   "keywords": [
     "react",
     "ui",
