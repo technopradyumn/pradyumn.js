@@ -26,14 +26,6 @@ import { Rule, Rules, useRule, all, any, not } from "pradyumn";
 npm install pradyumn
 ```
 
-```bash
-pnpm add pradyumn
-```
-
-```bash
-yarn add pradyumn
-```
-
 > **Peer dependencies:** `react >= 18.0.0` and `react-dom >= 18.0.0`
 
 ---
