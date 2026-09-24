@@ -26,6 +26,14 @@ import { Rule, Rules, useRule, all, any, not } from "pradyumn";
 npm install pradyumn
 ```
 
+### Scaffold a New App
+
+The fastest way to try `pradyumn` is to use the official Vite + React starter:
+
+```bash
+npm create pradyumn my-app
+```
+
 > **Peer dependencies:** `react >= 18.0.0` and `react-dom >= 18.0.0`
 
 ---
