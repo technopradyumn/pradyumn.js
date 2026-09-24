@@ -1,6 +1,6 @@
 {
   "name": "pradyumn",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Declarative, composable rules for React applications.",
   "license": "MIT",
   "type": "module",
@@ -15,7 +15,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pradyumnjs/pradyumn.js.git"
+    "url": "git+https://github.com/technopradyumn/pradyumn.js.git"
+  },
+  "homepage": "https://github.com/technopradyumn/pradyumn.js#readme",
+  "bugs": {
+    "url": "https://github.com/technopradyumn/pradyumn.js/issues"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
