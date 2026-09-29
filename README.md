@@ -17,6 +17,17 @@ Building web applications in React or Next.js often requires installing and wiri
 
 ## ⚡ Quick Scaffold
 
+For the fastest template-only setup, create the cross-platform starter without waiting for package downloads:
+
+```bash
+npx pradyumn create my-app --platform all --fast
+cd my-app
+npm install
+npm run dev
+```
+
+`--fast` only writes the starter files; dependency installation happens when you run `npm install`. File generation is designed to finish in seconds, but total setup time depends on package-network speed and is not guaranteed to be under five seconds. To have the CLI install dependencies before returning, omit `--fast`.
+
 Create a production-ready application with the official CLI:
 
 ```bash
@@ -45,7 +56,7 @@ cd commonplace
 npm run dev
 ```
 
-You can select a target for the generated run instructions with `--platform web`, `android`, `ios`, or `desktop`. The scaffold is built with Vite, React, Pradyumn, and Tauri 2; its shared web UI can also be built for the other targets:
+You can select a target with `--platform web`, `android`, `ios`, or `desktop`. Use `--platform web` for the leanest dependency set; it omits Tauri. The mobile and desktop scaffold uses Vite, React, Pradyumn, and Tauri 2 with a shared web UI:
 
 ```bash
 npm run build                 # web
@@ -55,6 +66,8 @@ npm run ios:init              # once, then npm run ios:dev
 ```
 
 Native builds require Rust and the relevant platform tooling (Android Studio/SDK for Android; macOS and Xcode for iOS). Tauri hosts the shared Pradyumn web UI in a native WebView, rather than rendering React Native controls. The starter includes target detection in Rust and a local-first social feed: creating posts and liking them persist in browser/WebView `localStorage` on that device. It has no server, accounts, or cross-device sync, and local storage is not encrypted. Startup and reload performance depend on the device and WebView; this scaffold does not claim a performance advantage over React Native.
+
+The platform scaffold CLI is available starting with `pradyumn@0.2.5`. If npm still runs `create-next-app` for `--platform android`, it is using an older published or cached CLI. After 0.2.5 is published, use `npx pradyumn@0.2.5 create commonplace-android --platform android --fast`.
 
 ---
 

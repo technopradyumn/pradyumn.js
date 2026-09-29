@@ -2,7 +2,34 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { writeNextAppTemplate, writeSocialAppTemplate } from "../../scripts/cli";
+import { parseCreateOptions, writeNextAppTemplate, writeSocialAppTemplate } from "../../scripts/cli";
+
+describe("parseCreateOptions", () => {
+  it("preserves a selected native target regardless of option order", () => {
+    expect(parseCreateOptions(["commonplace-android", "--platform", "android", "--fast"])).toEqual({
+      projectName: "commonplace-android",
+      platform: "android",
+      fastScaffold: true,
+    });
+    expect(parseCreateOptions(["--fast", "commonplace-android", "--platform", "android"])).toEqual({
+      projectName: "commonplace-android",
+      platform: "android",
+      fastScaffold: true,
+    });
+  });
+
+  it("uses web-only output when fast mode is selected without a platform", () => {
+    expect(parseCreateOptions(["commonplace", "--fast"])).toEqual({
+      projectName: "commonplace",
+      platform: "web",
+      fastScaffold: true,
+    });
+  });
+
+  it("rejects unknown platform targets instead of falling back to Next.js", () => {
+    expect(() => parseCreateOptions(["commonplace", "--platform", "windows"])).toThrow(/Choose a platform/);
+  });
+});
 
 describe("writeNextAppTemplate", () => {
   let projectPath: string;
@@ -70,5 +97,24 @@ describe("writeSocialAppTemplate", () => {
     expect(packageJson.scripts["ios:dev"]).toBe("tauri ios dev");
     expect(packageJson.scripts["desktop:dev"]).toBe("tauri dev");
     expect(packageJson.dependencies["pradyumn"]).toBe("latest");
+  });
+
+  it("omits native files and dependencies from a web-only scaffold", () => {
+    projectPath = mkdtempSync(path.join(os.tmpdir(), "pradyumn-web-app-"));
+
+    writeSocialAppTemplate(projectPath, "web");
+
+    const platform = readFileSync(path.join(projectPath, "src/platform.ts"), "utf8");
+    const packageJson = JSON.parse(readFileSync(path.join(projectPath, "package.json"), "utf8")) as {
+      scripts: Record<string, string>;
+      dependencies: Record<string, string>;
+      devDependencies: Record<string, string>;
+    };
+
+    expect(platform).toContain('return "web"');
+    expect(packageJson.dependencies["@tauri-apps/api"]).toBeUndefined();
+    expect(packageJson.devDependencies["@tauri-apps/cli"]).toBeUndefined();
+    expect(packageJson.scripts["android:dev"]).toBeUndefined();
+    expect(packageJson.scripts["ios:dev"]).toBeUndefined();
   });
 });

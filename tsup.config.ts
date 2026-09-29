@@ -8,6 +8,7 @@ export default defineConfig({
   format: ["esm"],
   dts: true,
   treeshake: true,
+  minify: true,
   sourcemap: true,
   clean: true,
   // Never bundle React — it must come from the host app (peerDependency)

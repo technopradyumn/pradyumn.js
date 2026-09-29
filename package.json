@@ -1,6 +1,6 @@
 {
   "name": "pradyumn",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Ultra-declarative, zero-boilerplate TypeScript UI creation library for React.",
   "license": "MIT",
   "type": "module",

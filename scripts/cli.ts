@@ -724,8 +724,20 @@ export function writeNextAppTemplate(projectPath: string): void {
   }
 }
 
-export function writeSocialAppTemplate(projectPath: string): void {
-  for (const [relativePath, contents] of Object.entries(socialAppFiles)) {
+export function writeSocialAppTemplate(projectPath: string, platform: CrossPlatformTarget = "all"): void {
+  const isWebOnly = platform === "web";
+  for (const [relativePath, defaultContents] of Object.entries(socialAppFiles)) {
+    if (isWebOnly && relativePath.startsWith("src-tauri/")) {
+      continue;
+    }
+    const contents = isWebOnly && relativePath === "src/platform.ts"
+      ? `export type RuntimePlatform = "web" | "android" | "ios" | "desktop";
+
+export async function getRuntimePlatform(): Promise<RuntimePlatform> {
+  return "web";
+}
+`
+      : defaultContents;
     const destination = path.join(projectPath, relativePath);
     mkdirSync(path.dirname(destination), { recursive: true });
     writeFileSync(destination, contents, "utf8");
@@ -747,24 +759,26 @@ export function writeSocialAppTemplate(projectPath: string): void {
         dev: "vite",
         build: "tsc && vite build",
         preview: "vite preview",
-        tauri: "tauri",
-        "desktop:dev": "tauri dev",
-        "desktop:build": "tauri build",
-        "android:init": "tauri android init",
-        "android:dev": "tauri android dev",
-        "android:build": "tauri android build",
-        "ios:init": "tauri ios init",
-        "ios:dev": "tauri ios dev",
-        "ios:build": "tauri ios build",
+        ...(isWebOnly ? {} : {
+          tauri: "tauri",
+          "desktop:dev": "tauri dev",
+          "desktop:build": "tauri build",
+          "android:init": "tauri android init",
+          "android:dev": "tauri android dev",
+          "android:build": "tauri android build",
+          "ios:init": "tauri ios init",
+          "ios:dev": "tauri ios dev",
+          "ios:build": "tauri ios build",
+        }),
       },
       dependencies: {
-        "@tauri-apps/api": "^2.0.0",
+        ...(isWebOnly ? {} : { "@tauri-apps/api": "^2.0.0" }),
         pradyumn: "latest",
         react: "^19.0.0",
         "react-dom": "^19.0.0",
       },
       devDependencies: {
-        "@tauri-apps/cli": "^2.0.0",
+        ...(isWebOnly ? {} : { "@tauri-apps/cli": "^2.0.0" }),
         "@vitejs/plugin-react": "^4.3.0",
         "@types/node": "^22.0.0",
         "@types/react": "^19.0.0",
@@ -775,22 +789,26 @@ export function writeSocialAppTemplate(projectPath: string): void {
     }, null, 2)}\n`,
     "utf8",
   );
-  const configPath = path.join(projectPath, "src-tauri/tauri.conf.json");
-  const config = readFileSync(configPath, "utf8");
-  writeFileSync(configPath, config.replace("com.pradyumn.commonplace", `com.pradyumn.${appIdentifier}`), "utf8");
+  if (!isWebOnly) {
+    const configPath = path.join(projectPath, "src-tauri/tauri.conf.json");
+    const config = readFileSync(configPath, "utf8");
+    writeFileSync(configPath, config.replace("com.pradyumn.commonplace", `com.pradyumn.${appIdentifier}`), "utf8");
+  }
 }
 
-function createApp(projectName: string, platform?: CrossPlatformTarget): void {
+function createApp(projectName: string, platform?: CrossPlatformTarget, fastScaffold = false): void {
   const projectPath = path.resolve(process.cwd(), projectName);
   if (platform) {
     if (existsSync(projectPath) && readdirSync(projectPath).length > 0) {
       throw new Error(`${projectPath} is not empty. Choose another project directory.`);
     }
     mkdirSync(projectPath, { recursive: true });
-    writeSocialAppTemplate(projectPath);
-    runNpm(["install"], projectPath);
-    console.log(`\nYour Pradyumn social app is ready in ${projectPath}.`);
-    console.log("\n  npm run dev");
+    writeSocialAppTemplate(projectPath, platform);
+    if (!fastScaffold) {
+      runNpm(["install"], projectPath);
+    }
+    console.log(`\nYour Pradyumn social app was scaffolded in ${projectPath}.`);
+    console.log(fastScaffold ? "\n  npm install\n  npm run dev" : "\n  npm run dev");
     console.log(`  Selected target: ${platform}`);
     if (platform === "android" || platform === "all") {
       console.log("  Android: npm run android:init, then npm run android:dev");
@@ -804,7 +822,12 @@ function createApp(projectName: string, platform?: CrossPlatformTarget): void {
     if (platform === "web" || platform === "all") {
       console.log("  Web: npm run dev");
     }
-    console.log("\nNative builds require Rust and the relevant Android or iOS toolchain.");
+    if (platform !== "web") {
+      console.log("\nNative builds require Rust and the relevant Android or iOS toolchain.");
+    }
+    if (fastScaffold) {
+      console.log("Fast mode writes project files only; dependency downloads are skipped.");
+    }
     return;
   }
 
@@ -837,6 +860,7 @@ function createApp(projectName: string, platform?: CrossPlatformTarget): void {
           "--use-npm",
           "--import-alias",
           "@/*",
+          "--skip-install",
           "--yes",
         ],
         projectPath,
@@ -857,6 +881,7 @@ function createApp(projectName: string, platform?: CrossPlatformTarget): void {
         "--use-npm",
         "--import-alias",
         "@/*",
+        "--skip-install",
         "--yes",
       ],
       parentPath,
@@ -864,26 +889,32 @@ function createApp(projectName: string, platform?: CrossPlatformTarget): void {
   }
 
   writeNextAppTemplate(projectPath);
-  runNpm(["install", "pradyumn"], projectPath);
+  const packageJsonPath = path.join(projectPath, "package.json");
+  if (!existsSync(packageJsonPath)) {
+    throw new Error(`Next.js did not create a package.json in ${projectPath}.`);
+  }
+  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+    dependencies?: Record<string, string>;
+  };
+  packageJson.dependencies = { ...packageJson.dependencies, pradyumn: "latest" };
+  writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+  runNpm(["install"], projectPath);
   console.log(`\nYour Next.js + TypeScript app is ready in ${projectPath}.`);
   console.log(`\n  cd ${projectName}\n  npm run dev\n`);
 }
 
-function main(): void {
-  const [command, ...args] = process.argv.slice(2);
-  if (command === "--help" || command === "-h" || command === "help") {
-    console.log("Usage: pradyumn create [project-name] [--platform web|android|ios|desktop|all]");
-    console.log("Create a Next.js app, or choose a platform to create a Pradyumn-powered local-first social app.");
-    return;
-  }
-  if (command !== "create") {
-    throw new Error('Unknown command. Use "pradyumn create [project-name]".');
-  }
+export interface CreateOptions {
+  projectName: string;
+  platform?: CrossPlatformTarget;
+  fastScaffold: boolean;
+}
 
-  const platformIndex = args.indexOf("--platform");
+export function parseCreateOptions(args: string[]): CreateOptions {
+  const remaining = [...args];
+  const platformIndex = remaining.indexOf("--platform");
   let platform: CrossPlatformTarget | undefined;
   if (platformIndex !== -1) {
-    const selectedPlatform = args[platformIndex + 1];
+    const selectedPlatform = remaining[platformIndex + 1];
     if (
       selectedPlatform !== "web" &&
       selectedPlatform !== "android" &&
@@ -894,13 +925,41 @@ function main(): void {
       throw new Error('Choose a platform: "web", "android", "ios", "desktop", or "all".');
     }
     platform = selectedPlatform;
-    args.splice(platformIndex, 2);
+    remaining.splice(platformIndex, 2);
   }
 
-  if (args.length > 1 || args.some((arg) => arg.startsWith("--"))) {
+  const fastIndex = remaining.indexOf("--fast");
+  const fastScaffold = fastIndex !== -1;
+  if (fastScaffold) {
+    remaining.splice(fastIndex, 1);
+    platform ??= "web";
+  }
+
+  if (remaining.length > 1 || remaining.some((arg) => arg.startsWith("--"))) {
     throw new Error("Provide one project name and an optional --platform target.");
   }
-  createApp(args[0] ?? "my-pradyumn-app", platform);
+
+  return {
+    projectName: remaining[0] ?? "my-pradyumn-app",
+    ...(platform ? { platform } : {}),
+    fastScaffold,
+  };
+}
+
+function main(): void {
+  const [command, ...args] = process.argv.slice(2);
+  if (command === "--help" || command === "-h" || command === "help") {
+    console.log("Usage: pradyumn create [project-name] [--platform web|android|ios|desktop|all] [--fast]");
+    console.log("Create a Next.js app, or choose a platform to create a Pradyumn-powered local-first social app.");
+    console.log("--fast writes the cross-platform starter without downloading dependencies.");
+    return;
+  }
+  if (command !== "create") {
+    throw new Error('Unknown command. Use "pradyumn create [project-name]".');
+  }
+
+  const options = parseCreateOptions(args);
+  createApp(options.projectName, options.platform, options.fastScaffold);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
