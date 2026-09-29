@@ -28,6 +28,6 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true
   },
-  "include": ["src", "tests"],
+  "include": ["src", "scripts", "tests"],
   "exclude": ["node_modules", "dist"]
 }

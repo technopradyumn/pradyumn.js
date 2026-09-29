@@ -20,10 +20,12 @@ Building web applications in React or Next.js often requires installing and wiri
 Create a production-ready application with the official CLI:
 
 ```bash
-npm create pradyumn@latest my-app
+npx pradyumn create my-app
 cd my-app
 npm run dev
 ```
+
+The starter is a **Next.js App Router** web app written in **TypeScript**, with a responsive professional UI and a live Pradyumn demo. It does not create a React Native app.
 
 Or install `pradyumn` into an existing React project:
 
@@ -330,20 +332,23 @@ toast.info("New update available.");
 
 ---
 
-## 🛠️ CLI Scaffolding
+## 🛠️ Next.js App Scaffolding
 
-To start a new project with all features pre-configured:
+Create a polished Next.js web app with TypeScript, ESLint, the App Router, and a live Pradyumn permissions playground:
 
 ```bash
-npm create pradyumn@latest my-app
+npx pradyumn create my-app
 ```
 
-Follow the prompt, then run:
+The generator installs Next.js and Pradyumn and writes the starter UI in `src/app/page.tsx`. To choose a different folder:
 
 ```bash
-cd my-app
+npx pradyumn create dashboard
+cd dashboard
 npm run dev
 ```
+
+Generated React application code uses TypeScript (`.tsx`), with CSS for styling. The starter interface is a responsive web experience built for Next.js—not React Native.
 
 ---
 
