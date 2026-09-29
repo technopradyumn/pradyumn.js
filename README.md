@@ -35,6 +35,27 @@ npm install pradyumn
 
 > **Peer dependencies:** `react >= 18.0.0` and `react-dom >= 18.0.0`
 
+### Cross-platform social app
+
+Choose a platform to scaffold a local-first social app for the web, Android, iOS, and desktop:
+
+```bash
+npx pradyumn create commonplace --platform all
+cd commonplace
+npm run dev
+```
+
+You can select a target for the generated run instructions with `--platform web`, `android`, `ios`, or `desktop`. The scaffold is built with Vite, React, Pradyumn, and Tauri 2; its shared web UI can also be built for the other targets:
+
+```bash
+npm run build                 # web
+npm run desktop:dev           # desktop
+npm run android:init          # once, then npm run android:dev
+npm run ios:init              # once, then npm run ios:dev
+```
+
+Native builds require Rust and the relevant platform tooling (Android Studio/SDK for Android; macOS and Xcode for iOS). Tauri hosts the shared Pradyumn web UI in a native WebView, rather than rendering React Native controls. The starter includes target detection in Rust and a local-first social feed: creating posts and liking them persist in browser/WebView `localStorage` on that device. It has no server, accounts, or cross-device sync, and local storage is not encrypted. Startup and reload performance depend on the device and WebView; this scaffold does not claim a performance advantage over React Native.
+
 ---
 
 ## 🚀 Feature Overview (50+ Built-In Features)
@@ -349,6 +370,8 @@ npm run dev
 ```
 
 Generated React application code uses TypeScript (`.tsx`), with CSS for styling. The starter interface is a responsive web experience built for Next.js—not React Native.
+
+The original Next.js scaffold remains the default when no `--platform` option is provided. Use `--platform` to create the cross-platform social app described above.
 
 ---
 

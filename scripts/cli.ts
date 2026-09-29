@@ -275,6 +275,433 @@ h1 span { color: #7060e8; }
 `,
 };
 
+type CrossPlatformTarget = "web" | "android" | "ios" | "desktop" | "all";
+
+const socialAppFiles: Record<string, string> = {
+  "index.html": `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f4f1" />
+    <title>Commonplace — your little corner</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+`,
+  "src/main.tsx": `import React from "react";
+import ReactDOM from "react-dom/client";
+import SocialApp from "./SocialApp";
+import "./styles.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <SocialApp />
+  </React.StrictMode>,
+);
+`,
+  "src/platform.ts": `export type RuntimePlatform = "web" | "android" | "ios" | "desktop";
+
+export async function getRuntimePlatform(): Promise<RuntimePlatform> {
+  if (typeof window === "undefined" || !("__TAURI_INTERNALS__" in window)) {
+    return "web";
+  }
+
+  const { invoke } = await import("@tauri-apps/api/core");
+  return invoke<RuntimePlatform>("platform_name");
+}
+`,
+  "src/SocialApp.tsx": `import { useEffect, useState } from "react";
+import { Avatar, For, persistentSignal, useSignal } from "pradyumn";
+import { getRuntimePlatform, type RuntimePlatform } from "./platform";
+
+interface Post {
+  id: string;
+  author: string;
+  handle: string;
+  time: string;
+  body: string;
+  likes: number;
+  liked: boolean;
+}
+
+const starterPosts: Post[] = [
+  {
+    id: "welcome",
+    author: "Maya Chen",
+    handle: "@mayamakes",
+    time: "Just now",
+    body: "A little corner of the internet, just for us. Say hello and share something you made today ✨",
+    likes: 12,
+    liked: false,
+  },
+  {
+    id: "garden",
+    author: "Oliver Grant",
+    handle: "@olivergrows",
+    time: "2 hours ago",
+    body: "First tomatoes from the balcony garden. They taste like summer.",
+    likes: 8,
+    liked: false,
+  },
+  {
+    id: "sketch",
+    author: "Ari Rivera",
+    handle: "@aridraws",
+    time: "Yesterday",
+    body: "Ten minutes of sketching before the day gets loud. That was enough.",
+    likes: 21,
+    liked: true,
+  },
+];
+
+const postsSignal = persistentSignal<Post[]>("pradyumn.social.posts.v1", starterPosts);
+
+export default function SocialApp() {
+  const posts = useSignal(postsSignal);
+  const [draft, setDraft] = useState("");
+  const [filter, setFilter] = useState<"all" | "liked">("all");
+  const [platform, setPlatform] = useState<RuntimePlatform>("web");
+  const [platformError, setPlatformError] = useState("");
+
+  useEffect(() => {
+    getRuntimePlatform()
+      .then(setPlatform)
+      .catch((error: unknown) => {
+        setPlatformError(error instanceof Error ? error.message : String(error));
+      });
+  }, []);
+
+  const visiblePosts = filter === "liked" ? posts.filter((post) => post.liked) : posts;
+
+  function publishPost() {
+    const body = draft.trim();
+    if (!body) return;
+
+    postsSignal.update((current) => [
+      {
+        id: \`\${Date.now()}-\${Math.random().toString(36).slice(2)}\`,
+        author: "You",
+        handle: "@you",
+        time: "Just now",
+        body,
+        likes: 0,
+        liked: false,
+      },
+      ...current,
+    ]);
+    setDraft("");
+    setFilter("all");
+  }
+
+  function toggleLike(id: string) {
+    postsSignal.update((current) =>
+      current.map((post) =>
+        post.id === id
+          ? { ...post, liked: !post.liked, likes: post.likes + (post.liked ? -1 : 1) }
+          : post,
+      ),
+    );
+  }
+
+  function removePost(id: string) {
+    postsSignal.update((current) => current.filter((post) => post.id !== id));
+  }
+
+  return (
+    <main className="app-shell">
+      <aside className="sidebar">
+        <a className="wordmark" href="#" aria-label="Commonplace home">
+          <span className="brand-mark">c</span>
+          <span>commonplace</span>
+        </a>
+        <p className="sidebar-caption">A little more human.</p>
+        <nav className="side-nav" aria-label="Feed filters">
+          <button className={filter === "all" ? "nav-item active" : "nav-item"} onClick={() => setFilter("all")}>
+            <span>⌂</span> Home
+          </button>
+          <button className={filter === "liked" ? "nav-item active" : "nav-item"} onClick={() => setFilter("liked")}>
+            <span>♡</span> Your likes
+          </button>
+        </nav>
+        <div className="sidebar-note">
+          <span className="note-spark">✳</span>
+          <strong>Your space, your pace.</strong>
+          <p>Posts stay on this device. No account, no algorithm, just you.</p>
+        </div>
+        <div className="profile-mini">
+          <Avatar name="You" size="sm" />
+          <div><strong>You</strong><span>@you</span></div>
+          <span className="profile-menu">···</span>
+        </div>
+      </aside>
+
+      <section className="feed-column" aria-label="Social feed">
+        <header className="feed-header">
+          <div>
+            <span className="eyebrow">YOUR COMMUNITY</span>
+            <h1>{filter === "liked" ? "Your likes" : "The good stuff"}</h1>
+          </div>
+          <span className="platform-pill"><i /> {platform}</span>
+        </header>
+
+        {platformError && <p className="platform-error" role="status">Platform detection failed: {platformError}</p>}
+
+        <form className="composer" onSubmit={(event) => { event.preventDefault(); publishPost(); }}>
+          <Avatar name="You" size="md" />
+          <div className="composer-content">
+            <label htmlFor="new-post">What’s on your mind?</label>
+            <textarea
+              id="new-post"
+              value={draft}
+              onChange={(event) => setDraft(event.currentTarget.value)}
+              placeholder="Share a small moment, a thought, or something you made..."
+              maxLength={280}
+              rows={3}
+            />
+            <div className="composer-footer">
+              <span className={draft.length > 250 ? "character-count near-limit" : "character-count"}>{draft.length}/280</span>
+              <button className="post-button" type="submit" disabled={!draft.trim()}>Share a thought <span>↗</span></button>
+            </div>
+          </div>
+        </form>
+
+        <div className="feed-label">
+          <span>{filter === "liked" ? "SAVED FOR A SMILE" : "A FEED THAT FEELS LIKE YOU"}</span>
+          <span>{visiblePosts.length} {visiblePosts.length === 1 ? "post" : "posts"}</span>
+        </div>
+
+        <div className="post-list">
+          <For each={visiblePosts} fallback={<div className="empty-state"><span>♡</span><strong>Nothing here just yet.</strong><p>Head home and share the first thought.</p></div>}>
+            {(post) => (
+              <article className="post-card" key={post.id}>
+                <Avatar name={post.author} size="md" />
+                <div className="post-content">
+                  <div className="post-meta">
+                    <strong>{post.author}</strong><span>{post.handle}</span><i>·</i><time>{post.time}</time>
+                    {post.author === "You" && <button className="delete-button" type="button" onClick={() => removePost(post.id)}>Remove</button>}
+                  </div>
+                  <p className="post-body">{post.body}</p>
+                  <div className="post-actions">
+                    <button className={post.liked ? "like-button liked" : "like-button"} type="button" aria-pressed={post.liked} onClick={() => toggleLike(post.id)}>
+                      <span>{post.liked ? "♥" : "♡"}</span> {post.likes}
+                    </button>
+                    <span className="local-badge"><i /> saved on this device</span>
+                  </div>
+                </div>
+              </article>
+            )}
+          </For>
+        </div>
+        <footer className="feed-footer">Made for the little things worth sharing <span>✳</span></footer>
+      </section>
+
+      <aside className="right-rail">
+        <div className="welcome-card">
+          <span className="welcome-icon">✿</span>
+          <span className="eyebrow">A GENTLER SOCIAL APP</span>
+          <h2>Good things grow when shared.</h2>
+          <p>This starter works offline. Your posts and likes are saved in local storage on this device.</p>
+        </div>
+        <div className="rail-card">
+          <span className="eyebrow">A FEW KIND REMINDERS</span>
+          <p>🌱 Small is still worth sharing.</p>
+          <p>☀️ Take what you need. Leave the rest.</p>
+          <p>💛 Be the reason someone smiles.</p>
+        </div>
+        <div className="rail-legal">A local-first demo · Your data stays yours</div>
+      </aside>
+    </main>
+  );
+}
+`,
+  "src/styles.css": `:root { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #33372f; background: #f5f4f1; font-synthesis: none; text-rendering: optimizeLegibility; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+button, textarea { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+.app-shell { display: grid; grid-template-columns: 238px minmax(420px, 640px) minmax(220px, 275px); gap: 38px; width: min(1280px, 100%); min-height: 100vh; margin: 0 auto; padding: 32px 30px; }
+.sidebar { position: sticky; top: 0; display: flex; height: calc(100vh - 64px); min-height: 540px; flex-direction: column; padding: 9px 0; }
+.wordmark { display: flex; align-items: center; gap: 10px; color: #34382f; font: 800 19px Manrope, sans-serif; letter-spacing: -1px; text-decoration: none; }
+.brand-mark { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 13px; background: linear-gradient(145deg, #e9a788, #c87258); color: #fff; font: 800 21px Manrope, sans-serif; }
+.sidebar-caption { margin: 6px 0 38px 47px; color: #99998f; font-size: 11px; }
+.side-nav { display: grid; gap: 7px; }
+.nav-item { display: flex; align-items: center; gap: 13px; border: 0; border-radius: 12px; padding: 12px 13px; background: transparent; color: #78796f; text-align: left; cursor: pointer; font-size: 13px; }
+.nav-item span { width: 20px; color: #9d806c; font-size: 19px; text-align: center; }
+.nav-item.active { background: #ece8e0; color: #4a4c40; font-weight: 700; }
+.sidebar-note { margin-top: auto; border: 1px solid #ebe7df; border-radius: 16px; padding: 16px; background: #fbfaf7; }
+.note-spark { display: block; margin-bottom: 12px; color: #cb8d6b; font-size: 22px; }
+.sidebar-note strong { font-size: 12px; }
+.sidebar-note p { margin: 7px 0 0; color: #919188; font-size: 11px; line-height: 1.6; }
+.profile-mini { display: flex; align-items: center; gap: 10px; margin-top: 18px; border-top: 1px solid #e9e6de; padding: 16px 5px 0; }
+.profile-mini strong, .profile-mini span:not(.profile-menu) { display: block; font-size: 11px; }.profile-mini span:not(.profile-menu) { margin-top: 3px; color: #9b9b91; }
+.profile-menu { margin-left: auto; color: #8c8d82; }
+.feed-column { min-width: 0; border: 1px solid #e9e6de; border-radius: 20px; padding: 24px 24px 16px; background: #fbfaf7; box-shadow: 0 10px 45px #453d2910; }
+.feed-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.eyebrow { color: #a18b72; font-size: 9px; font-weight: 700; letter-spacing: 1.35px; }
+.feed-header h1 { margin: 5px 0 0; font: 800 23px Manrope, sans-serif; letter-spacing: -1px; }
+.platform-pill { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #ebe7df; border-radius: 30px; padding: 6px 10px; color: #85867c; font-size: 10px; text-transform: capitalize; }
+.platform-pill i, .local-badge i { width: 6px; height: 6px; border-radius: 50%; background: #85a98b; }
+.platform-error { border-radius: 9px; padding: 10px; background: #fff0ed; color: #a1463c; font-size: 11px; }
+.composer { display: flex; gap: 12px; border: 1px solid #eae7df; border-radius: 15px; padding: 16px; background: #fff; }
+.composer-content { flex: 1; min-width: 0; }.composer-content label { color: #7e7f74; font-size: 11px; font-weight: 600; }
+.composer textarea { display: block; width: 100%; min-height: 78px; resize: vertical; margin-top: 9px; border: 0; outline: 0; color: #484a40; font-size: 13px; line-height: 1.55; }
+.composer textarea::placeholder { color: #b4b2a9; }
+.composer-footer { display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f0eee8; padding-top: 12px; }
+.character-count { color: #aaa99f; font-size: 10px; }.near-limit { color: #ba765a; }
+.post-button { border: 0; border-radius: 9px; padding: 9px 12px; background: #526653; color: #fff; cursor: pointer; font-size: 11px; font-weight: 700; }
+.post-button:disabled { opacity: .45; cursor: not-allowed; }.post-button span { margin-left: 7px; }
+.feed-label { display: flex; justify-content: space-between; margin: 25px 1px 10px; color: #a3a095; font-size: 9px; font-weight: 700; letter-spacing: 1px; }
+.feed-label span + span { font-weight: 500; letter-spacing: 0; text-transform: none; }
+.post-list { display: grid; gap: 10px; }
+.post-card { display: flex; gap: 12px; border: 1px solid #eeece5; border-radius: 14px; padding: 15px; background: #fff; }
+.post-content { flex: 1; min-width: 0; }.post-meta { display: flex; align-items: center; gap: 6px; min-height: 28px; color: #9a9a90; font-size: 10px; }
+.post-meta strong { color: #45473e; font-size: 11px; }.post-meta i { font-style: normal; }.post-meta time { white-space: nowrap; }
+.delete-button { margin-left: auto; border: 0; padding: 3px 0; background: transparent; color: #a57d6a; cursor: pointer; font-size: 9px; }
+.post-body { margin: 12px 0 15px; color: #62645a; font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.post-actions { display: flex; align-items: center; gap: 15px; }.like-button { display: inline-flex; align-items: center; gap: 5px; border: 0; padding: 0; background: transparent; color: #96968c; cursor: pointer; font-size: 10px; }.like-button span { font-size: 16px; }.like-button.liked { color: #c97767; }
+.local-badge { display: inline-flex; align-items: center; gap: 5px; color: #a7a69c; font-size: 9px; }
+.empty-state { display: grid; justify-items: center; border: 1px dashed #e2ded5; border-radius: 14px; padding: 38px 15px; color: #87877d; text-align: center; }.empty-state>span { color: #c08a72; font-size: 25px; }.empty-state strong { margin-top: 10px; font-size: 12px; }.empty-state p { margin: 6px 0 0; font-size: 11px; }
+.feed-footer { padding-top: 19px; color: #aaa99e; text-align: center; font-size: 9px; }.feed-footer span { color: #c78668; }
+.right-rail { display: flex; flex-direction: column; gap: 14px; padding-top: 98px; }
+.welcome-card, .rail-card { border: 1px solid #e9e6de; border-radius: 16px; padding: 17px; background: #fbfaf7; }
+.welcome-icon { display: grid; width: 35px; height: 35px; place-items: center; margin-bottom: 14px; border-radius: 12px; background: #f2e8dc; color: #b47c5d; font-size: 18px; }
+.welcome-card h2 { margin: 8px 0; font: 700 17px Manrope, sans-serif; letter-spacing: -.5px; line-height: 1.35; }.welcome-card p { margin: 0; color: #8b8b81; font-size: 11px; line-height: 1.65; }
+.rail-card { padding: 16px; }.rail-card p { margin: 15px 0 0; color: #76776d; font-size: 10px; line-height: 1.5; }
+.rail-legal { margin-top: auto; padding: 0 4px; color: #aaa99e; font-size: 9px; line-height: 1.6; }
+@media (max-width: 1040px) { .app-shell { grid-template-columns: 190px minmax(400px, 640px); justify-content: center; gap: 24px; }.right-rail { display: none; } }
+@media (max-width: 700px) { .app-shell { display: block; padding: 0; }.sidebar { position: static; display: flex; height: auto; min-height: 0; flex-direction: row; align-items: center; padding: 13px 17px; border-bottom: 1px solid #e9e6de; background: #fbfaf7; }.wordmark { font-size: 16px; }.brand-mark { width: 32px; height: 32px; }.sidebar-caption, .sidebar-note, .profile-mini { display: none; }.side-nav { display: flex; gap: 4px; margin-left: auto; }.nav-item { gap: 5px; padding: 8px; font-size: 10px; }.nav-item span { width: auto; font-size: 15px; }.feed-column { min-height: calc(100vh - 58px); border: 0; border-radius: 0; padding: 21px 15px 13px; box-shadow: none; }.feed-header h1 { font-size: 21px; }.composer { gap: 9px; padding: 12px; }.post-card { gap: 9px; padding: 12px; }.post-meta { gap: 4px; font-size: 9px; }.post-meta strong { font-size: 10px; }.platform-pill { padding: 5px 8px; font-size: 9px; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+`,
+  "vite.config.ts": `import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+  base: "./",
+  clearScreen: false,
+  server: { strictPort: true },
+});
+`,
+  "tsconfig.json": `{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src", "vite.config.ts"]
+}
+`,
+  "src-tauri/Cargo.toml": `[package]
+name = "pradyumn_social_app"
+version = "0.1.0"
+description = "A local-first Pradyumn social app"
+authors = ["Pradyumn"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+`,
+  "src-tauri/build.rs": `fn main() {
+    tauri_build::build()
+}
+`,
+  "src-tauri/src/main.rs": `#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+#[cfg(target_os = "android")]
+mod platform {
+    pub fn name() -> &'static str {
+        "android"
+    }
+}
+
+#[cfg(target_os = "ios")]
+mod platform {
+    pub fn name() -> &'static str {
+        "ios"
+    }
+}
+
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+mod platform {
+    pub fn name() -> &'static str {
+        "desktop"
+    }
+}
+
+#[tauri::command]
+fn platform_name() -> &'static str {
+    platform::name()
+}
+
+fn main() {
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![platform_name])
+        .run(tauri::generate_context!())
+        .expect("error while running the Pradyumn application");
+}
+`,
+  "src-tauri/tauri.conf.json": `{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Commonplace",
+  "version": "0.1.0",
+  "identifier": "com.pradyumn.commonplace",
+  "build": {
+    "beforeDevCommand": "npm run dev -- --host 0.0.0.0",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Commonplace",
+        "width": 1120,
+        "height": 800,
+        "minWidth": 360,
+        "minHeight": 560
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' asset: data:; connect-src ipc: http://ipc.localhost http://localhost:5173 ws://localhost:5173"
+    }
+  },
+  "bundle": {
+    "active": true
+  }
+}
+`,
+  "src-tauri/capabilities/default.json": `{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default permissions for the social starter",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
+`,
+};
+
 function runNpm(args: string[], cwd: string): void {
   const result = spawnSync("npm", args, {
     cwd,
@@ -297,8 +724,90 @@ export function writeNextAppTemplate(projectPath: string): void {
   }
 }
 
-function createApp(projectName: string): void {
+export function writeSocialAppTemplate(projectPath: string): void {
+  for (const [relativePath, contents] of Object.entries(socialAppFiles)) {
+    const destination = path.join(projectPath, relativePath);
+    mkdirSync(path.dirname(destination), { recursive: true });
+    writeFileSync(destination, contents, "utf8");
+  }
+
+  const packageName = path.basename(projectPath)
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "pradyumn-social-app";
+  const appIdentifier = /^[a-z]/.test(packageName) ? packageName : `app-${packageName}`;
+  writeFileSync(
+    path.join(projectPath, "package.json"),
+    `${JSON.stringify({
+      name: packageName,
+      private: true,
+      version: "0.1.0",
+      type: "module",
+      scripts: {
+        dev: "vite",
+        build: "tsc && vite build",
+        preview: "vite preview",
+        tauri: "tauri",
+        "desktop:dev": "tauri dev",
+        "desktop:build": "tauri build",
+        "android:init": "tauri android init",
+        "android:dev": "tauri android dev",
+        "android:build": "tauri android build",
+        "ios:init": "tauri ios init",
+        "ios:dev": "tauri ios dev",
+        "ios:build": "tauri ios build",
+      },
+      dependencies: {
+        "@tauri-apps/api": "^2.0.0",
+        pradyumn: "latest",
+        react: "^19.0.0",
+        "react-dom": "^19.0.0",
+      },
+      devDependencies: {
+        "@tauri-apps/cli": "^2.0.0",
+        "@vitejs/plugin-react": "^4.3.0",
+        "@types/node": "^22.0.0",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        typescript: "~5.5.4",
+        vite: "^5.4.0",
+      },
+    }, null, 2)}\n`,
+    "utf8",
+  );
+  const configPath = path.join(projectPath, "src-tauri/tauri.conf.json");
+  const config = readFileSync(configPath, "utf8");
+  writeFileSync(configPath, config.replace("com.pradyumn.commonplace", `com.pradyumn.${appIdentifier}`), "utf8");
+}
+
+function createApp(projectName: string, platform?: CrossPlatformTarget): void {
   const projectPath = path.resolve(process.cwd(), projectName);
+  if (platform) {
+    if (existsSync(projectPath) && readdirSync(projectPath).length > 0) {
+      throw new Error(`${projectPath} is not empty. Choose another project directory.`);
+    }
+    mkdirSync(projectPath, { recursive: true });
+    writeSocialAppTemplate(projectPath);
+    runNpm(["install"], projectPath);
+    console.log(`\nYour Pradyumn social app is ready in ${projectPath}.`);
+    console.log("\n  npm run dev");
+    console.log(`  Selected target: ${platform}`);
+    if (platform === "android" || platform === "all") {
+      console.log("  Android: npm run android:init, then npm run android:dev");
+    }
+    if (platform === "ios" || platform === "all") {
+      console.log("  iOS: npm run ios:init, then npm run ios:dev (requires macOS and Xcode)");
+    }
+    if (platform === "desktop" || platform === "all") {
+      console.log("  Desktop: npm run desktop:dev");
+    }
+    if (platform === "web" || platform === "all") {
+      console.log("  Web: npm run dev");
+    }
+    console.log("\nNative builds require Rust and the relevant Android or iOS toolchain.");
+    return;
+  }
+
   const parentPath = path.dirname(projectPath);
   const projectDirectoryName = path.basename(projectPath);
 
@@ -361,16 +870,37 @@ function createApp(projectName: string): void {
 }
 
 function main(): void {
-  const [command, projectName = "my-pradyumn-app"] = process.argv.slice(2);
+  const [command, ...args] = process.argv.slice(2);
   if (command === "--help" || command === "-h" || command === "help") {
-    console.log("Usage: pradyumn create [project-name]");
-    console.log("Create a Next.js App Router project with TypeScript and a polished Pradyumn UI.");
+    console.log("Usage: pradyumn create [project-name] [--platform web|android|ios|desktop|all]");
+    console.log("Create a Next.js app, or choose a platform to create a Pradyumn-powered local-first social app.");
     return;
   }
   if (command !== "create") {
     throw new Error('Unknown command. Use "pradyumn create [project-name]".');
   }
-  createApp(projectName);
+
+  const platformIndex = args.indexOf("--platform");
+  let platform: CrossPlatformTarget | undefined;
+  if (platformIndex !== -1) {
+    const selectedPlatform = args[platformIndex + 1];
+    if (
+      selectedPlatform !== "web" &&
+      selectedPlatform !== "android" &&
+      selectedPlatform !== "ios" &&
+      selectedPlatform !== "desktop" &&
+      selectedPlatform !== "all"
+    ) {
+      throw new Error('Choose a platform: "web", "android", "ios", "desktop", or "all".');
+    }
+    platform = selectedPlatform;
+    args.splice(platformIndex, 2);
+  }
+
+  if (args.length > 1 || args.some((arg) => arg.startsWith("--"))) {
+    throw new Error("Provide one project name and an optional --platform target.");
+  }
+  createApp(args[0] ?? "my-pradyumn-app", platform);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
