@@ -1,6 +1,6 @@
 {
   "name": "pradyumn",
-  "version": "0.2.1",
+  "version": "0.2.4",
   "description": "Ultra-declarative, zero-boilerplate TypeScript UI creation library for React.",
   "license": "MIT",
   "type": "module",
@@ -29,9 +29,7 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": {
-    "pradyumn": "./dist/cli.js"
-  },
+  "bin": "dist/cli.js",
   "exports": {
     ".": {
       "import": "./dist/index.js",
