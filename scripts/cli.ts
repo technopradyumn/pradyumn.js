@@ -808,13 +808,22 @@ function createApp(projectName: string, platform?: CrossPlatformTarget, fastScaf
       runNpm(["install"], projectPath);
     }
     console.log(`\nYour Pradyumn social app was scaffolded in ${projectPath}.`);
-    console.log(fastScaffold ? "\n  npm install\n  npm run dev" : "\n  npm run dev");
     console.log(`  Selected target: ${platform}`);
+    console.log("\nNext steps:");
+    const changeDirectoryCommand = process.platform === "win32" ? "cd /d" : "cd";
+    console.log(`  ${changeDirectoryCommand} "${projectPath}"`);
+    if (fastScaffold) {
+      console.log("  npm install");
+    }
     if (platform === "android" || platform === "all") {
-      console.log("  Android: npm run android:init, then npm run android:dev");
+      console.log("  Android (run init once):");
+      console.log("    npm run android:init");
+      console.log("    npm run android:dev");
     }
     if (platform === "ios" || platform === "all") {
-      console.log("  iOS: npm run ios:init, then npm run ios:dev (requires macOS and Xcode)");
+      console.log("  iOS (requires macOS and Xcode; run init once):");
+      console.log("    npm run ios:init");
+      console.log("    npm run ios:dev");
     }
     if (platform === "desktop" || platform === "all") {
       console.log("  Desktop: npm run desktop:dev");

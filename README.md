@@ -1,23 +1,81 @@
 # pradyumn.js
 
-> **The Simplest, Ultra-Declarative TypeScript UI Creation Library for React.**
+> A lightweight full-stack TypeScript framework for web, mobile, and desktop apps.
 
 [![npm version](https://img.shields.io/npm/v/pradyumn.svg?color=ff3366)](https://www.npmjs.com/package/pradyumn)
 [![npm downloads](https://img.shields.io/npm/dm/pradyumn.svg)](https://www.npmjs.com/package/pradyumn)
 [![license](https://img.shields.io/npm/l/pradyumn.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict%205%2B-blue)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18%2B%20%7C%2019%2B-61dafb)](https://react.dev/)
-[![Tests](https://img.shields.io/badge/tests-78%20passed-success)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/tests-84%20passed-success)](https://vitest.dev/)
 
-Building web applications in React or Next.js often requires installing and wiring 10+ different libraries: Redux/Zustand for state, React-Hook-Form and Zod for forms, Framer Motion for animations, Toastify for notifications, Radix for dialogs, plus endless custom hooks and nested ternaries.
-
-**pradyumn** consolidates all of this into a single, cohesive, zero-boilerplate UI creation library powered by **50+ built-in features** in 100% strict TypeScript.
+Pradyumn is a compact TypeScript framework for building modern interfaces and local-first apps across web, Android, iOS, and desktop. It combines declarative UI primitives, signals, local persistence, and cross-platform app scaffolding in one toolchain.
 
 ---
 
-## ⚡ Quick Scaffold
+## ⚡ Quick start
 
-For the fastest template-only setup, create the cross-platform starter without waiting for package downloads:
+### 1) Install the CLI
+
+```bash
+npm install -g pradyumn
+```
+
+### 2) Create a project
+
+#### Web app
+
+```bash
+npx pradyumn create my-app
+cd my-app
+npm run dev
+```
+
+#### Social app for mobile + desktop + web
+
+```bash
+npx pradyumn create commonplace --platform all --fast
+cd commonplace
+npm install
+npm run dev
+```
+
+#### Android app
+
+```bash
+npx pradyumn create commonplace-android --platform android --fast
+cd commonplace-android
+npm install
+npm run android:init
+npm run android:dev
+```
+
+#### Desktop app
+
+```bash
+npx pradyumn create commonplace-desktop --platform desktop --fast
+cd commonplace-desktop
+npm install
+npm run desktop:dev
+```
+
+#### iOS app (Mac only)
+
+```bash
+npx pradyumn create commonplace-ios --platform ios --fast
+cd commonplace-ios
+npm install
+npm run ios:init
+npm run ios:dev
+```
+
+> `--fast` writes the app files only. Run `npm install` in the generated app before starting the dev server or native build.
+
+---
+
+## Platform support and commands
+
+### Mobile + desktop + web
 
 ```bash
 npx pradyumn create my-app --platform all --fast
@@ -26,50 +84,161 @@ npm install
 npm run dev
 ```
 
-`--fast` only writes the starter files; dependency installation happens when you run `npm install`. File generation is designed to finish in seconds, but total setup time depends on package-network speed and is not guaranteed to be under five seconds. To have the CLI install dependencies before returning, omit `--fast`.
-
-Create a production-ready application with the official CLI:
+Available scripts in a generated cross-platform project:
 
 ```bash
-npx pradyumn create my-app
-cd my-app
+npm run dev         # web dev server
+npm run desktop:dev # desktop app
+npm run android:init
+npm run android:dev
+npm run android:build
+npm run ios:init
+npm run ios:dev
+npm run ios:build
+```
+
+### Android on Windows
+
+1. Install Node.js, Rust, and Android Studio.
+2. In Android Studio SDK Manager, install the Android SDK, platform tools, build tools, and NDK.
+3. Set `ANDROID_HOME` and ensure `%LOCALAPPDATA%\Android\Sdk\platform-tools` is on `PATH`.
+4. Open a new terminal and run:
+
+```bash
+npx pradyumn create commonplace-android --platform android --fast
+cd commonplace-android
+npm install
+npm run android:init
+npm run android:dev
+```
+
+If a device is connected, ensure USB debugging is enabled. If not, start an emulator from Android Studio.
+
+### Desktop
+
+```bash
+npx pradyumn create commonplace-desktop --platform desktop --fast
+cd commonplace-desktop
+npm install
+npm run desktop:dev
+```
+
+### iOS (Mac only)
+
+```bash
+npx pradyumn create commonplace-ios --platform ios --fast
+cd commonplace-ios
+npm install
+npm run ios:init
+npm run ios:dev
+```
+
+---
+
+## Local-first social app
+
+The generated social app includes:
+
+- feed UI for posts and likes
+- local persistence with `persistentSignal`
+- platform-aware runtime detection
+- device-local storage only
+- no backend required
+
+Example generated flow:
+
+```bash
+npx pradyumn create commonplace --platform all --fast
+cd commonplace
+npm install
 npm run dev
 ```
 
-The starter is a **Next.js App Router** web app written in **TypeScript**, with a responsive professional UI and a live Pradyumn demo. It does not create a React Native app.
+This is a local-first social starter; data stays on the current device. It is intended for prototype and demo work.
 
-Or install `pradyumn` into an existing React project:
+---
+
+## Troubleshooting
+
+### `npm run android:init` says “Missing script”
+
+This means the command was run outside the generated app folder or the app was created without the `--platform android` target.
+
+Use:
+
+```bash
+cd your-app-folder
+npm run android:init
+```
+
+### `ENOENT: no such file or directory, open .../package.json`
+
+Run the command inside the generated app, not in the parent directory.
+
+```bash
+cd commonplace-android
+npm install
+npm run android:init
+```
+
+### Mobile or desktop commands do not work on Windows
+
+- Android needs Android Studio + SDK + Rust.
+- iOS requires macOS + Xcode.
+- Desktop works with Tauri prerequisites for your OS.
+
+### `--fast` mode still needs install
+
+`--fast` only writes files. Dependencies are installed with:
+
+```bash
+npm install
+```
+
+---
+
+## Framework goals
+
+Pradyumn is designed to feel like a lightweight full-stack framework for product teams that want:
+
+- one TypeScript API for UI logic
+- local-first persistence
+- mobile, web, and desktop generation from one project
+- fast app bootstrapping with clear scripts
+
+---
+
+## Install into an existing React app
 
 ```bash
 npm install pradyumn
 ```
 
-> **Peer dependencies:** `react >= 18.0.0` and `react-dom >= 18.0.0`
-
-### Cross-platform social app
-
-Choose a platform to scaffold a local-first social app for the web, Android, iOS, and desktop:
+Peer dependencies:
 
 ```bash
-npx pradyumn create commonplace --platform all
-cd commonplace
-npm run dev
+npm install react react-dom
 ```
-
-You can select a target with `--platform web`, `android`, `ios`, or `desktop`. Use `--platform web` for the leanest dependency set; it omits Tauri. The mobile and desktop scaffold uses Vite, React, Pradyumn, and Tauri 2 with a shared web UI:
-
-```bash
-npm run build                 # web
-npm run desktop:dev           # desktop
-npm run android:init          # once, then npm run android:dev
-npm run ios:init              # once, then npm run ios:dev
-```
-
-Native builds require Rust and the relevant platform tooling (Android Studio/SDK for Android; macOS and Xcode for iOS). Tauri hosts the shared Pradyumn web UI in a native WebView, rather than rendering React Native controls. The starter includes target detection in Rust and a local-first social feed: creating posts and liking them persist in browser/WebView `localStorage` on that device. It has no server, accounts, or cross-device sync, and local storage is not encrypted. Startup and reload performance depend on the device and WebView; this scaffold does not claim a performance advantage over React Native.
-
-The platform scaffold CLI is available starting with `pradyumn@0.2.5`. If npm still runs `create-next-app` for `--platform android`, it is using an older published or cached CLI. After 0.2.5 is published, use `npx pradyumn@0.2.5 create commonplace-android --platform android --fast`.
 
 ---
+
+## Feature overview
+
+Pradyumn includes declarative rules, signals, forms, hooks, and patterns for building UI without wiring large state stacks.
+
+```tsx
+import { Rule, Show, all, not } from "pradyumn";
+
+<Rule when={all(() => user.isLoggedIn, not(() => user.isBanned))} fallback={<LoginPrompt />}>
+  <Dashboard />
+</Rule>
+```
+
+---
+
+## License
+
+MIT
 
 ## 🚀 Feature Overview (50+ Built-In Features)
 
